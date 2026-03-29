@@ -20,6 +20,8 @@ jobs:
     
     - name: Install dependencies
       run: npm ci
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
 
     # ALLURE REQUIREMENT: Ensure you have allure-playwright installed in package.json
     - name: Run Playwright tests
