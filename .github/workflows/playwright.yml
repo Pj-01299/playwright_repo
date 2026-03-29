@@ -1,13 +1,10 @@
-name: Playwright Tests
+name: Playwright Allure Tests
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
     branches: [ main, master ]
 
 jobs:
   playwright-tests:
-    timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -19,51 +16,61 @@ jobs:
     - uses: actions/setup-node@v5
       with:
         node-version: lts/*
+        cache: 'npm'
+    
     - name: Install dependencies
       run: npm ci
-    - name: Install Playwright browsers
-      run: npx playwright install --with-deps
 
+    # ALLURE REQUIREMENT: Ensure you have allure-playwright installed in package.json
     - name: Run Playwright tests
-      # FIX 1: Explicitly set the reporter to 'blob' so it generates the .zip files needed for merging
-      run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --reporter=blob
+      run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --reporter=line,allure-playwright
+      env:
+        ALLURE_RESULTS_DIR: allure-results # Forces shards to use the same folder name
 
-    - name: Upload blob report to GitHub Actions Artifacts
+    - name: Upload Allure Results (Shard)
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v4
       with:
-        name: blob-report-${{ matrix.shardIndex }}
-        # Playwright puts blob reports in the 'blob-report' folder by default
-        path: blob-report
+        name: allure-results-${{ matrix.shardIndex }}
+        path: allure-results
         retention-days: 1
 
-  merge-reports:
-    if: ${{ !cancelled() }}
+  merge-allure-reports:
     needs: [playwright-tests]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
     - uses: actions/setup-node@v5
       with:
         node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
 
-    - name: Download blob reports from GitHub Actions Artifacts
+    - name: Download all Shard Results
       uses: actions/download-artifact@v4
       with:
-        # FIX 2: This pattern pulls all shard artifacts into one local directory
-        path: all-blob-reports
-        pattern: blob-report-*
-        merge-multiple: true
+        path: all-allure-results
+        pattern: allure-results-*
+        merge-multiple: true # This combines all 4 shard folders into ONE folder
 
-    - name: Merge into HTML Report
-      # FIX 3: Point the merge command to the folder where all blobs were downloaded
-      run: npx playwright merge-reports --reporter html ./all-blob-reports
-
-    - name: Upload HTML report
-      uses: actions/upload-artifact@v4
+    - name: Load Allure history
+      uses: actions/checkout@v5
+      if: always()
+      continue-on-error: true
       with:
-        name: html-report--attempt-${{ github.run_attempt }}
-        path: playwright-report
-        retention-days: 13
+        ref: gh-pages
+        path: gh-pages
+
+    - name: Build Allure Report
+      uses: simple-elf/allure-report-action@master
+      if: always()
+      with:
+        allure_results: all-allure-results
+        allure_history: allure-history
+        keep_reports: 20
+
+    - name: Deploy Report to GitHub Pages
+      if: always()
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: allure-report
