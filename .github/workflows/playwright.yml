@@ -64,7 +64,7 @@ jobs:
     - name: Build Allure Report
       # This command takes the raw JSONs and converts them to a viewable HTML folder
       run: npx allure generate all-allure-results --clean --single-file -o allure-report
-
+      
     - name: Upload Final Allure HTML Report
       uses: actions/upload-artifact@v4
       with:
