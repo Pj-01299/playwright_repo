@@ -1,4 +1,4 @@
-name: Playwright Allure Tests
+name: Playwright Tests
 on:
   push:
     branches: [ main, master ]
@@ -19,55 +19,47 @@ jobs:
     - uses: actions/setup-node@v5
       with:
         node-version: lts/*
-        cache: 'npm'
-    
     - name: Install dependencies
       run: npm ci
-
     - name: Install Playwright browsers
       run: npx playwright install --with-deps
 
     - name: Run Playwright tests
-      run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --reporter=line,allure-playwright
-      env:
-        ALLURE_RESULTS_DIR: allure-results
+      run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --reporter=blob
 
-    - name: Upload Allure Results (Shard)
+    - name: Upload blob report to GitHub Actions Artifacts
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v4
       with:
-        name: allure-results-${{ matrix.shardIndex }}
-        path: allure-results
+        name: blob-report-${{ matrix.shardIndex }}
+        path: blob-report
         retention-days: 1
 
-  merge-allure-reports:
-    needs: [playwright-tests]
+  merge-reports:
     if: ${{ !cancelled() }}
+    needs: [playwright-tests]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
     - uses: actions/setup-node@v5
       with:
         node-version: lts/*
-        cache: 'npm'
-
     - name: Install dependencies
       run: npm ci
 
-    - name: Download all Shard Results
+    - name: Download blob reports from GitHub Actions Artifacts
       uses: actions/download-artifact@v4
       with:
-        path: all-allure-results
-        pattern: allure-results-*
+        path: all-blob-reports
+        pattern: blob-report-*
         merge-multiple: true
 
-    - name: Build Allure Report
-      # This command takes the raw JSONs and converts them to a viewable HTML folder
-      run: npx allure generate all-allure-results --clean --single-file -o allure-report
-      
-    - name: Upload Final Allure HTML Report
+    - name: Merge into HTML Report
+      run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+    - name: Upload HTML report
       uses: actions/upload-artifact@v4
       with:
-        name: final-allure-report
-        path: allure-report
-        retention-days: 7
+        name: html-report--attempt-${{ github.run_attempt }}
+        path: playwright-report
+        retention-days: 13
