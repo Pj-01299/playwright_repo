@@ -11,7 +11,7 @@ test('has title', async ({ page}) => {
   // console.log(process.env.TEST_WORKER_INDEX );
   // console.log(process.env.PLAYWRIGHT_FORCE_TTY,process.env.FORCE_COLOR,process.env.PLAYWRIGHT_LIST_PRINT_STEPS);
   
-  await expect(page).toHaveTitle(/Playwright/);
+  await expect(page).toHaveTitle(/Playwight/);
 });
 
 test('get started link', async ({ page}) => {

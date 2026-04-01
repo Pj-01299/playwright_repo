@@ -25,7 +25,6 @@ jobs:
       run: npx playwright install --with-deps
 
     - name: Run Playwright tests
-      # FIX 1: Explicitly set the reporter to 'blob' so it generates the .zip files needed for merging
       run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --reporter=blob
 
     - name: Upload blob report to GitHub Actions Artifacts
@@ -33,7 +32,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: blob-report-${{ matrix.shardIndex }}
-        # Playwright puts blob reports in the 'blob-report' folder by default
         path: blob-report
         retention-days: 1
 
@@ -52,13 +50,11 @@ jobs:
     - name: Download blob reports from GitHub Actions Artifacts
       uses: actions/download-artifact@v4
       with:
-        # FIX 2: This pattern pulls all shard artifacts into one local directory
         path: all-blob-reports
         pattern: blob-report-*
         merge-multiple: true
 
     - name: Merge into HTML Report
-      # FIX 3: Point the merge command to the folder where all blobs were downloaded
       run: npx playwright merge-reports --reporter html ./all-blob-reports
 
     - name: Upload HTML report
